@@ -119,26 +119,20 @@ class SoundRenderer:
         processedBuffers = al.ALint(0)
         al.alGetSourcei(source_id, al.AL_BUFFERS_QUEUED, queuedBuffers)
         al.alGetSourcei(source_id, al.AL_BUFFERS_PROCESSED, processedBuffers)
-        print(f"Queued Buffers: {queuedBuffers.value}")
-        print(f"Processed Buffers: {processedBuffers.value}")
 
         if processedBuffers.value > 0:
             buffer = al.ALuint(0)
             al.alSourceUnqueueBuffers(source_id, 1, buffer)
-            print(f"Unqueued Buffer: {buffer.value}")
         else:
             buffer = al.ALuint(0)
             al.alGenBuffers(1, buffer)
-            print(f"Generated Buffer: {buffer.value}")
 
         al.alBufferData(buffer, al.AL_FORMAT_STEREO16, audio_sample, len(audio_sample), SOUND_SAMPLING_RATE)
         al.alSourceQueueBuffers(source_id, 1, buffer)
-        print("Queued Buffer: {buffer.value}")
         state = al.ALint(0)
         al.alGetSourcei(source_id, al.AL_SOURCE_STATE, state)
         if state.value != al.AL_PLAYING:
             al.alSourcePlay(source_id)
-            print(f"Played Source: {source_id}")
 
     def stop_playback(self, source_id: int) -> None:
         self.set()
@@ -157,4 +151,3 @@ class SoundRenderer:
         
         al.alSourceStop(source_id)
         al.alSourcei(source_id, al.AL_BUFFER, al.AL_NONE)
-        print(f"Clear Buffers: {bufferCount}")

@@ -3,10 +3,10 @@ from typing import Dict, List
 
 import numpy as np
 
-from pyftg_sound.audio_buffer import AudioBuffer
-from pyftg_sound.audio_source import AudioSource
+from pyftg_sound.models.audio_buffer import AudioBuffer
+from pyftg_sound.models.audio_source import AudioSource
+from pyftg_sound.models.sound_renderer import SoundRenderer
 from pyftg_sound.openal import al
-from pyftg_sound.sound_renderer import SoundRenderer
 
 
 class SoundManager:
