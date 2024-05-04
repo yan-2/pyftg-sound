@@ -17,20 +17,25 @@ class SoundManager:
     virtual_renderer: SoundRenderer = None
 
     def __init__(self) -> None:
-        self.sound_renderers.append(SoundRenderer.create_default_renderer())
         self.virtual_renderer = SoundRenderer.create_virtual_renderer()
+        self.sound_renderers.append(SoundRenderer.create_default_renderer())
         self.sound_renderers.append(self.virtual_renderer)
         if len(self.sound_renderers) == 0:
             raise ValueError("No audio renderer has been created.")
-        self.set_listener_values()
 
-    def set_listener_values(self) -> None:
-        listener_pos = [0.0, 0.0, 0.0]
-        listener_vel = [0.0, 0.0, 0.0]
-        listener_ori = [0.0, 0.0, -1.0, 0.0, 1.0, 0.0]
+    def set_listener_position(self, x: float, y: float, z: float) -> None:
+        listener_pos = [x, y, z]
         for sound_renderer in self.sound_renderers:
             sound_renderer.al_listener_fv(al.AL_POSITION, listener_pos)
+
+    def set_listener_velocity(self, x: float, y: float, z: float) -> None:
+        listener_vel = [x, y, z]
+        for sound_renderer in self.sound_renderers:
             sound_renderer.al_listener_fv(al.AL_VELOCITY, listener_vel)
+
+    def set_listener_orientation(self, x: float, y: float, z: float, x_up: float, y_up: float, z_up: float) -> None:
+        listener_ori = [x, y, z, x_up, y_up, z_up]
+        for sound_renderer in self.sound_renderers:
             sound_renderer.al_listener_fv(al.AL_ORIENTATION, listener_ori)
     
     def create_source(self) -> int:
