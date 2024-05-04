@@ -23,7 +23,6 @@ class SoundRenderer:
     def create_default_renderer():
         device = alc.alcOpenDevice(None)
         context = alc.alcCreateContext(device, None)
-        alc.alcMakeContextCurrent(context)
         return SoundRenderer(device, context)
 
     @staticmethod
@@ -53,7 +52,6 @@ class SoundRenderer:
         self.set()
         if self.is_playing(source_id):
             al.alSourceStop(source_id)
-            al.alSourcei(source_id, al.AL_BUFFER, al.AL_NONE)
 
     def play(self, source_id: int, buffer_id: int, x: int, y: int, loop: bool) -> None:
         self.set()

@@ -50,20 +50,22 @@ class SoundManager:
         return buffer.value
     
     def create_audio_source(self) -> AudioSource:
+        contexts = [sound_renderer.context for sound_renderer in self.sound_renderers]
         source_ids = [0] * len(self.sound_renderers)
         for i, sound_renderer in enumerate(self.sound_renderers):
             sound_renderer.set()
             source_ids[i] = self.create_source()
-        audio_source = AudioSource(source_ids)
+        audio_source = AudioSource(contexts, source_ids)
         self.audio_sources.append(audio_source)
         return audio_source
 
     def create_audio_buffer(self, file_path: Path = None) -> AudioBuffer:
+        contexts = [sound_renderer.context for sound_renderer in self.sound_renderers]
         buffer_ids = [0] * len(self.sound_renderers)
         for i, sound_renderer in enumerate(self.sound_renderers):
             sound_renderer.set()
             buffer_ids[i] = self.create_buffer()
-        audio_buffer = AudioBuffer(buffer_ids)
+        audio_buffer = AudioBuffer(contexts, buffer_ids)
         if file_path is not None:
             audio_buffer.register_sound(file_path)
             self.sound_buffers[file_path.name] = audio_buffer
@@ -99,7 +101,7 @@ class SoundManager:
     def set_source_gain(self, source: AudioSource, gain: float) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
-            sound_renderer.set_source_gain(source_id, min(1.0, max(0.0, gain)))
+            sound_renderer.set_source_gain(source_id, np.clip(gain, 0, 1))
 
     def sample_audio(self) -> np.ndarray[np.float32]:
         return self.virtual_renderer.sample_audio()
