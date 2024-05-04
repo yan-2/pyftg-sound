@@ -7,12 +7,9 @@ from pyftg_sound.audio_buffer import AudioBuffer
 from pyftg_sound.audio_source import AudioSource
 from pyftg_sound.openal import al
 from pyftg_sound.sound_renderer import SoundRenderer
-from pyftg_sound.utils import load_sound
 
 
 class SoundManager:
-    _instance = None
-
     sound_renderers: List[SoundRenderer] = []
     audio_sources: List[AudioSource] = []
     audio_buffers: List[AudioBuffer] = []
@@ -35,12 +32,38 @@ class SoundManager:
             sound_renderer.al_listener_fv(al.AL_POSITION, listener_pos)
             sound_renderer.al_listener_fv(al.AL_VELOCITY, listener_vel)
             sound_renderer.al_listener_fv(al.AL_ORIENTATION, listener_ori)
+    
+    def create_source(self) -> int:
+        source = al.ALuint(0)
+        al.alGenSources(1, source)
+        al.alSourcef(source, al.AL_ROLLOFF_FACTOR, 0.01)
+        return source.value
+        
+    def create_buffer(self) -> int:
+        buffer = al.ALuint(0)
+        al.alGenBuffers(1, buffer)
+        return buffer.value
+    
+    def create_audio_source(self) -> AudioSource:
+        source_ids = [0] * len(self.sound_renderers)
+        for i, sound_renderer in enumerate(self.sound_renderers):
+            sound_renderer.set()
+            source_ids[i] = self.create_source()
+        audio_source = AudioSource(source_ids)
+        self.audio_sources.append(audio_source)
+        return audio_source
 
-    @staticmethod
-    def get_instance():
-        if SoundManager._instance is None:
-            SoundManager._instance = SoundManager()
-        return SoundManager._instance
+    def create_audio_buffer(self, file_path: Path = None) -> AudioBuffer:
+        buffer_ids = [0] * len(self.sound_renderers)
+        for i, sound_renderer in enumerate(self.sound_renderers):
+            sound_renderer.set()
+            buffer_ids[i] = self.create_buffer()
+        audio_buffer = AudioBuffer(buffer_ids)
+        if file_path is not None:
+            audio_buffer.register_sound(file_path)
+            self.sound_buffers[file_path.name] = audio_buffer
+        self.audio_buffers.append(audio_buffer)
+        return audio_buffer
 
     def play(self, source: AudioSource, buffer: AudioBuffer, x: int, y: int, loop: bool) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
@@ -72,37 +95,6 @@ class SoundManager:
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
             sound_renderer.set_source_gain(source_id, min(1.0, max(0.0, gain)))
-
-    def create_buffer(self, file_path: Path) -> AudioBuffer:
-        buffer_ids = [0] * len(self.sound_renderers)
-        for i, sound_renderer in enumerate(self.sound_renderers):
-            sound_renderer.set()
-            buffer_ids[i] = self.register_sound(file_path)
-        audio_buffer = AudioBuffer(buffer_ids)
-        self.audio_buffers.append(audio_buffer)
-        return audio_buffer
-        
-    def register_sound(self, file_path: Path) -> int:
-        buffer = al.ALuint(0)
-        al.alGenBuffers(1, buffer)
-        alformat, wavbuf, samplerate = load_sound(file_path)
-        al.alBufferData(buffer, alformat, wavbuf, len(wavbuf), samplerate)
-        return buffer.value
-    
-    def create_audio_source(self) -> AudioSource:
-        source_ids = [0] * len(self.sound_renderers)
-        for i, sound_renderer in enumerate(self.sound_renderers):
-            sound_renderer.set()
-            source_ids[i] = self.create_source()
-        audio_source = AudioSource(source_ids)
-        self.audio_sources.append(audio_source)
-        return audio_source
-    
-    def create_source(self) -> int:
-        source = al.ALuint(0)
-        al.alGenSources(1, source)
-        al.alSourcef(source, al.AL_ROLLOFF_FACTOR, 0.01)
-        return source.value
 
     def sample_audio(self) -> np.ndarray[np.float32]:
         return self.virtual_renderer.sample_audio()
