@@ -16,12 +16,14 @@ class SoundManager:
     sound_buffers: Dict[str, AudioBuffer] = {}
     virtual_renderer: SoundRenderer = None
 
-    def __init__(self) -> None:
+    def __init__(self, use_default_renderer: bool = True) -> None:
+        if use_default_renderer:
+            self.register_sound_renderer(SoundRenderer.create_default_renderer())
         self.virtual_renderer = SoundRenderer.create_virtual_renderer()
-        self.sound_renderers.append(SoundRenderer.create_default_renderer())
-        self.sound_renderers.append(self.virtual_renderer)
-        if len(self.sound_renderers) == 0:
-            raise ValueError("No audio renderer has been created.")
+        self.register_sound_renderer(self.virtual_renderer)
+
+    def register_sound_renderer(self, sound_renderer: SoundRenderer) -> None:
+        self.sound_renderers.append(sound_renderer)
 
     def set_listener_position(self, x: float, y: float, z: float) -> None:
         listener_pos = [x, y, z]
