@@ -146,8 +146,10 @@ ALenum = ctypes.c_int
 ALfloat = ctypes.c_float
 ALdouble = ctypes.c_double
 ALvoid = None
+
 class ALCCapabilities(ctypes.Structure):
     pass
+
 _bind = dll.bind_function
 
 alEnable = _bind("alEnable", [ALenum])
