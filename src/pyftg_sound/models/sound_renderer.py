@@ -109,51 +109,36 @@ class SoundRenderer:
 
     def sample_audio(self, dtype: type, render_size: int, nchannels: int) -> np.ndarray:
         self.set()
-        audio_data_type = dtype * render_size * nchannels
-        audio_sample = audio_data_type()
-        audio_sample_ptr = ctypes.cast(audio_sample, ctypes.c_void_p)
-
+        audio_sample_type = dtype * render_size * nchannels
+        audio_sample_ptr = ctypes.cast(audio_sample_type(), ctypes.c_void_p)
         soft.alcRenderSamplesSOFT(self.device, audio_sample_ptr, al.ALsizei(render_size))
-        sampled_audio = ctypes.cast(audio_sample_ptr, ctypes.POINTER(audio_data_type)).contents
-
-        separated_channel_audio = np.zeros((2, render_size), dtype=dtypemap[dtype])
-        separated_channel_audio[0, :] = sampled_audio[0]
-        separated_channel_audio[1, :] = sampled_audio[1]
+        separated_channel_audio = np.zeros((nchannels, render_size), dtype=dtypemap[dtype])
+        separated_channel_audio[:, :] = ctypes.cast(audio_sample_ptr, ctypes.POINTER(audio_sample_type)).contents
         return separated_channel_audio
+    
+    def get_processed_buffers(self, source_id: int) -> int:
+        self.set()
+        processed_buffers = al.ALint(0)
+        al.alGetSourcei(source_id, al.AL_BUFFERS_PROCESSED, processed_buffers)
+        return processed_buffers.value
     
     def playback(self, source_id: int, format: int, audio_sample: bytes, sample_rate: int) -> None:
         self.set()
-        
-        queuedBuffers = al.ALint(0)
-        processedBuffers = al.ALint(0)
-        al.alGetSourcei(source_id, al.AL_BUFFERS_QUEUED, queuedBuffers)
-        al.alGetSourcei(source_id, al.AL_BUFFERS_PROCESSED, processedBuffers)
-
         buffer = al.ALuint(0)
-        if processedBuffers.value > 0:
+        if self.get_processed_buffers(source_id) > 0:
             al.alSourceUnqueueBuffers(source_id, 1, buffer)
         else:
             al.alGenBuffers(1, buffer)
-
         al.alBufferData(buffer, format, audio_sample, len(audio_sample), sample_rate)
         al.alSourceQueueBuffers(source_id, 1, buffer)
-        
         if not self.is_playing(source_id):
             self.play(source_id)
 
     def stop_playback(self, source_id: int) -> None:
         self.set()
-
-        queuedBuffers = al.ALint(0)
-        processedBuffers = al.ALint(0)
-        al.alGetSourcei(source_id, al.AL_BUFFERS_QUEUED, queuedBuffers)
-        al.alGetSourcei(source_id, al.AL_BUFFERS_PROCESSED, processedBuffers)
-        bufferCount = queuedBuffers.value + processedBuffers.value
-
         buffer = al.ALuint(0)
-        for _ in range(bufferCount):
+        for _ in range(self.get_processed_buffers(source_id)):
             al.alSourceUnqueueBuffers(source_id, 1, buffer)
             al.alDeleteBuffers(1, buffer)
-        
         self.stop(source_id)
-        al.alSourcei(source_id, al.AL_BUFFER, al.AL_NONE)
+        self.al_source_i(source_id, al.AL_BUFFER, al.AL_NONE)
