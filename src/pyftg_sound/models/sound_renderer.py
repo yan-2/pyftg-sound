@@ -3,12 +3,9 @@ from typing import List
 
 import numpy as np
 
-from pyftg_sound.config import SOUND_RENDER_SIZE, SOUND_SAMPLING_RATE
-from pyftg_sound.openal import al, alc
-from pyftg_sound.openal.constants import (ALC_FLOAT_SOFT,
-                                          ALC_FORMAT_CHANNELS_SOFT,
-                                          ALC_FORMAT_TYPE_SOFT, ALC_FREQUENCY,
-                                          ALC_STEREO_SOFT)
+from pyftg_sound.openal import al, alc, soft
+from pyftg_sound.utils.dtype import dtype_map
+from pyftg_sound.utils.openal import set_source_attribute
 
 
 class SoundRenderer:
@@ -26,53 +23,61 @@ class SoundRenderer:
         return SoundRenderer(device, context)
 
     @staticmethod
-    def create_virtual_renderer():
-        device = alc.alcLoopbackOpenDeviceSOFT(None)
-        attrs = [ALC_FORMAT_TYPE_SOFT, ALC_FLOAT_SOFT, ALC_FORMAT_CHANNELS_SOFT,
-                 ALC_STEREO_SOFT, ALC_FREQUENCY, SOUND_SAMPLING_RATE, 0]
-        attrs_c = al.ALint * len(attrs)
-        attrs_c = attrs_c(*attrs)
+    def create_virtual_renderer(format: int = soft.ALC_FLOAT_SOFT, channel: int = soft.ALC_STEREO_SOFT, sample_rate: int = 48000):
+        device = soft.alcLoopbackOpenDeviceSOFT(None)
+        attrs = [
+            soft.ALC_FORMAT_TYPE_SOFT, format, soft.ALC_FORMAT_CHANNELS_SOFT,
+            channel, alc.ALC_FREQUENCY, sample_rate, 0
+        ]
+        attrs_c = (al.ALint * len(attrs))(*attrs)
         context = alc.alcCreateContext(device, attrs_c)
         return SoundRenderer(device, context)
 
     def set(self) -> None:
         alc.alcMakeContextCurrent(self.context)
 
-    def set_listener_data(self) -> None:
+    def create_source(self, attrs: dict) -> int:
         self.set()
-        al.alListener3f(al.AL_POSITION, 0, 0, 0)
-        al.alListener3f(al.AL_VELOCITY, 0, 0, 0)
+        source = al.ALuint(0)
+        al.alGenSources(1, source)
+        for attr, value in attrs.items():
+            set_source_attribute(source, attr, value)
+        return source.value
+        
+    def create_buffer(self) -> int:
+        self.set()
+        buffer = al.ALuint(0)
+        al.alGenBuffers(1, buffer)
+        return buffer.value
 
-    def play(self, source_id: int, buffer_id: int) -> None:
+    def al_listener_fv(self, param: int, values: List[float]) -> None:
         self.set()
-        al.alSourcei(source_id, al.AL_BUFFER, buffer_id)
+        values_arr = (al.ALfloat * len(values))(*values)
+        al.alListenerfv(param, values_arr)
+
+    def play(self, source_id: int) -> None:
+        self.set()
         al.alSourcePlay(source_id)
+
+    def is_playing(self, source_id: int) -> bool:
+        self.set()
+        state = al.ALint(0)
+        al.alGetSourcei(source_id, al.AL_SOURCE_STATE, state)
+        return state.value == al.AL_PLAYING
 
     def stop(self, source_id: int) -> None:
         self.set()
         if self.is_playing(source_id):
             al.alSourceStop(source_id)
 
-    def play(self, source_id: int, buffer_id: int, x: int, y: int, loop: bool) -> None:
+    def play2(self, source_id: int, buffer_id: int, x: float, y: float, z: float, loop: bool) -> None:
         self.set()
         if self.is_playing(source_id):
             self.stop(source_id)
-        al.alSourcei(source_id, al.AL_BUFFER, buffer_id)
-        al.alSource3f(source_id, al.AL_POSITION, x, 0, 4)
-        al.alSourcei(source_id, al.AL_LOOPING, int(loop))
-        al.alSourcePlay(source_id)
-
-    def get_source_gain(self, source_id: int) -> float:
-        self.set()
-        return al.alGetSourcef(source_id, al.AL_GAIN)
-
-    def set_source_gain(self, source_id: int, gain: float) -> None:
-        self.set()
-        al.alSourcef(source_id, al.AL_GAIN, gain)
-
-    def set_source_3f(self, source_id: int, param: int, x: int, y: int, z: int) -> None:
-        self.set()
-        al.alSource3f(source_id, param, x, y, z)
+        set_source_attribute(source_id, al.AL_BUFFER, buffer_id)
+        set_source_attribute(source_id, al.AL_POSITION, [x, y, z])
+        set_source_attribute(source_id, al.AL_LOOPING, al.AL_TRUE if loop else al.AL_FALSE)
+        self.play(source_id)
 
     def delete_source(self, source_id: int) -> None:
         self.set()
@@ -87,67 +92,38 @@ class SoundRenderer:
         alc.alcDestroyContext(self.context)
         alc.alcCloseDevice(self.device)
 
-    def is_playing(self, source_id: int) -> bool:
+    def sample_audio(self, dtype: type, render_size: int, nchannels: int) -> np.ndarray:
         self.set()
-        state = al.ALint(0)
-        al.alGetSourcei(source_id, al.AL_SOURCE_STATE, state)
-        return state.value == al.AL_PLAYING
-
-    def al_listener_fv(self, param: int, values: List[float]) -> None:
-        self.set()
-        values_arr = (al.ALfloat * len(values))(*values)
-        al.alListenerfv(param, values_arr)
-
-    def sample_audio(self) -> np.ndarray[np.float32]:
-        self.set()
-        audio_data_type = al.ALfloat * SOUND_RENDER_SIZE * 2
-        audio_sample = audio_data_type()
-        audio_sample_pointer = ctypes.cast(audio_sample, ctypes.c_void_p)
-
-        alc.alcRenderSamplesSOFT(self.device, audio_sample_pointer, al.ALsizei(SOUND_RENDER_SIZE))
-        sampled_audio = ctypes.cast(audio_sample_pointer, ctypes.POINTER(audio_data_type)).contents
-
-        separated_channel_audio = np.zeros((2, SOUND_RENDER_SIZE), dtype=np.float32)
-        separated_channel_audio[0, :] = sampled_audio[0]
-        separated_channel_audio[1, :] = sampled_audio[1]
+        audio_sample_type = dtype * render_size * nchannels
+        audio_sample_ptr = ctypes.cast(audio_sample_type(), ctypes.c_void_p)
+        soft.alcRenderSamplesSOFT(self.device, audio_sample_ptr, al.ALsizei(render_size))
+        separated_channel_audio = np.zeros((nchannels, render_size), dtype=dtype_map[dtype])
+        separated_channel_audio[:, :] = ctypes.cast(audio_sample_ptr, ctypes.POINTER(audio_sample_type)).contents
         return separated_channel_audio
     
-    def playback(self, source_id: int, audio_sample: bytes) -> None:
+    def get_processed_buffers(self, source_id: int) -> int:
         self.set()
-        
-        queuedBuffers = al.ALint(0)
-        processedBuffers = al.ALint(0)
-        al.alGetSourcei(source_id, al.AL_BUFFERS_QUEUED, queuedBuffers)
-        al.alGetSourcei(source_id, al.AL_BUFFERS_PROCESSED, processedBuffers)
-
-        if processedBuffers.value > 0:
-            buffer = al.ALuint(0)
+        processed_buffers = al.ALint(0)
+        al.alGetSourcei(source_id, al.AL_BUFFERS_PROCESSED, processed_buffers)
+        return processed_buffers.value
+    
+    def playback(self, source_id: int, format: int, audio_sample: bytes, sample_rate: int) -> None:
+        self.set()
+        buffer = al.ALuint(0)
+        if self.get_processed_buffers(source_id) > 0:
             al.alSourceUnqueueBuffers(source_id, 1, buffer)
         else:
-            buffer = al.ALuint(0)
             al.alGenBuffers(1, buffer)
-
-        al.alBufferData(buffer, al.AL_FORMAT_STEREO16, audio_sample, len(audio_sample), SOUND_SAMPLING_RATE)
+        al.alBufferData(buffer, format, audio_sample, len(audio_sample), sample_rate)
         al.alSourceQueueBuffers(source_id, 1, buffer)
-        state = al.ALint(0)
-        al.alGetSourcei(source_id, al.AL_SOURCE_STATE, state)
-        if state.value != al.AL_PLAYING:
-            al.alSourcePlay(source_id)
+        if not self.is_playing(source_id):
+            self.play(source_id)
 
     def stop_playback(self, source_id: int) -> None:
         self.set()
-
-        queuedBuffers = al.ALint(0)
-        processedBuffers = al.ALint(0)
-        al.alGetSourcei(source_id, al.AL_BUFFERS_QUEUED, queuedBuffers)
-        al.alGetSourcei(source_id, al.AL_BUFFERS_PROCESSED, processedBuffers)
-
-        bufferCount = queuedBuffers.value + processedBuffers.value
-
         buffer = al.ALuint(0)
-        for _ in range(bufferCount):
+        for _ in range(self.get_processed_buffers(source_id)):
             al.alSourceUnqueueBuffers(source_id, 1, buffer)
             al.alDeleteBuffers(1, buffer)
-        
-        al.alSourceStop(source_id)
-        al.alSourcei(source_id, al.AL_BUFFER, al.AL_NONE)
+        self.stop(source_id)
+        self.al_source_i(source_id, al.AL_BUFFER, al.AL_NONE)

@@ -1,7 +1,6 @@
 import ctypes
 
 from . import dll
-from .log import logger
 
 __all__ = ["ALC_FALSE", "ALC_TRUE", "ALC_INVALID", "ALC_FREQUENCY",
            "ALC_REFRESH", "ALC_SYNC", "ALC_MONO_SOURCES", "ALC_STEREO_SOURCES",
@@ -151,16 +150,3 @@ alcCaptureStop = _bind("alcCaptureStop", [ctypes.POINTER(ALCdevice)])
 alcCaptureSamples = _bind("alcCaptureSamples", [ctypes.POINTER(ALCdevice),
                                                 ctypes.POINTER(ALCvoid),
                                                 ALCsizei])
-
-try:
-    alcLoopbackOpenDeviceSOFT = _bind("alcLoopbackOpenDeviceSOFT", [ctypes.POINTER(ALCchar)], ctypes.POINTER(ALCdevice))
-    alcGetStringiSOFT = _bind("alcGetStringiSOFT", [ctypes.POINTER(ALCdevice),
-                                                      ctypes.POINTER(ALCenum),
-                                                      ctypes.POINTER(ALCsizei)])
-    alcResetDeviceSOFT = _bind("alcResetDeviceSOFT", [ctypes.POINTER(ALCdevice),
-                                                      ctypes.POINTER(ALCint)])
-    alcRenderSamplesSOFT = _bind("alcRenderSamplesSOFT", [ctypes.POINTER(ALCdevice), ctypes.POINTER(ALCvoid), ALCsizei])
-except AttributeError:
-    logger.warning("OpenAL-Soft functions could not be bound")
-else:
-    __all__.extend(("alcLoopbackOpenDeviceSOFT", "alcGetStringiSOFT", "alcResetDeviceSOFT", "alcRenderSamplesSOFT"))

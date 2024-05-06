@@ -7,6 +7,7 @@ from pyftg_sound.models.audio_buffer import AudioBuffer
 from pyftg_sound.models.audio_source import AudioSource
 from pyftg_sound.models.sound_renderer import SoundRenderer
 from pyftg_sound.openal import al
+from pyftg_sound.utils.openal import set_source_attribute
 
 
 class SoundManager:
@@ -16,14 +17,15 @@ class SoundManager:
     sound_buffers: Dict[str, AudioBuffer] = {}
     virtual_renderer: SoundRenderer = None
 
-    def __init__(self, use_default_renderer: bool = True) -> None:
-        if use_default_renderer:
-            self.register_sound_renderer(SoundRenderer.create_default_renderer())
-        self.virtual_renderer = SoundRenderer.create_virtual_renderer()
-        self.register_sound_renderer(self.virtual_renderer)
+    def __init__(self) -> None:
+        pass
 
-    def register_sound_renderer(self, sound_renderer: SoundRenderer) -> None:
+    def set_default_renderer(self, sound_renderer: SoundRenderer) -> None:
         self.sound_renderers.append(sound_renderer)
+
+    def set_virtual_renderer(self, virtual_renderer: SoundRenderer) -> None:
+        self.virtual_renderer = virtual_renderer
+        self.sound_renderers.append(virtual_renderer)
 
     def set_listener_position(self, x: float, y: float, z: float) -> None:
         listener_pos = [x, y, z]
@@ -40,23 +42,11 @@ class SoundManager:
         for sound_renderer in self.sound_renderers:
             sound_renderer.al_listener_fv(al.AL_ORIENTATION, listener_ori)
     
-    def create_source(self) -> int:
-        source = al.ALuint(0)
-        al.alGenSources(1, source)
-        al.alSourcef(source, al.AL_ROLLOFF_FACTOR, 0.01)
-        return source.value
-        
-    def create_buffer(self) -> int:
-        buffer = al.ALuint(0)
-        al.alGenBuffers(1, buffer)
-        return buffer.value
-    
-    def create_audio_source(self) -> AudioSource:
+    def create_audio_source(self, attrs: dict = {}) -> AudioSource:
         contexts = [sound_renderer.context for sound_renderer in self.sound_renderers]
         source_ids = [0] * len(self.sound_renderers)
         for i, sound_renderer in enumerate(self.sound_renderers):
-            sound_renderer.set()
-            source_ids[i] = self.create_source()
+            source_ids[i] = sound_renderer.create_source(attrs)
         audio_source = AudioSource(contexts, source_ids)
         self.audio_sources.append(audio_source)
         return audio_source
@@ -65,8 +55,7 @@ class SoundManager:
         contexts = [sound_renderer.context for sound_renderer in self.sound_renderers]
         buffer_ids = [0] * len(self.sound_renderers)
         for i, sound_renderer in enumerate(self.sound_renderers):
-            sound_renderer.set()
-            buffer_ids[i] = self.create_buffer()
+            buffer_ids[i] = sound_renderer.create_buffer()
         audio_buffer = AudioBuffer(contexts, buffer_ids)
         if file_path is not None:
             audio_buffer.register_sound(file_path)
@@ -74,39 +63,47 @@ class SoundManager:
         self.audio_buffers.append(audio_buffer)
         return audio_buffer
 
-    def play(self, source: AudioSource, buffer: AudioBuffer, x: int, y: int, loop: bool) -> None:
-        for i, sound_renderer in enumerate(self.sound_renderers):
-            source_id = source.get_source_ids()[i]
-            buffer_id = buffer.get_buffers()[i]
-            sound_renderer.play(source_id, buffer_id, x, y, loop)
-
-    def get_sound_buffer(self, sound_name: str) -> AudioBuffer:
-        return self.sound_buffers.get(sound_name)
-
     def is_playing(self, source: AudioSource) -> bool:
         ans = False
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
             ans = ans or sound_renderer.is_playing(source_id)
         return ans
+    
+    def play(self, source: AudioSource, buffer: AudioBuffer, x: float, y: float, loop: bool) -> None:
+        self.play3d(source, buffer, x, 0, y, loop)
+
+    def play3d(self, source: AudioSource, buffer: AudioBuffer, x: float, y: float, z: float, loop: bool) -> None:
+        for i, sound_renderer in enumerate(self.sound_renderers):
+            source_id = source.get_source_ids()[i]
+            buffer_id = buffer.get_buffers()[i]
+            sound_renderer.play2(source_id, buffer_id, x, y, z, loop)
 
     def stop(self, source: AudioSource) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
             sound_renderer.stop(source_id)
 
-    def set_source_pos(self, source: AudioSource, x: int, y: int) -> None:
+    def set_source_pos(self, source: AudioSource, x: float, y: float) -> None:
+        self.set_source_pos3d(source, x, 0, y)
+
+    def set_source_pos3d(self, source: AudioSource, x: float, y: float, z: float) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
-            sound_renderer.set_source_3f(source_id, al.AL_POSITION, x, 0, 4)
+            set_source_attribute(source_id, al.AL_POSITION, [x, y, z], context=sound_renderer.context)
 
     def set_source_gain(self, source: AudioSource, gain: float) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
-            sound_renderer.set_source_gain(source_id, np.clip(gain, 0, 1))
+            set_source_attribute(source_id, al.AL_GAIN, gain, context=sound_renderer.context)
 
-    def sample_audio(self) -> np.ndarray[np.float32]:
-        return self.virtual_renderer.sample_audio()
+    def get_sound_buffer(self, sound_name: str) -> AudioBuffer:
+        return self.sound_buffers.get(sound_name)
+
+    def sample_audio(self, dtype: type = al.ALfloat, render_size: int = 800, nchannels: int = 2) -> np.ndarray:
+        if not self.virtual_renderer:
+            raise ValueError("Virtual renderer not set")
+        return self.virtual_renderer.sample_audio(dtype, render_size, nchannels)
     
     def remove_source(self, source: AudioSource) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
@@ -114,10 +111,10 @@ class SoundManager:
             sound_renderer.delete_source(source_id)
         self.audio_sources.remove(source)
 
-    def playback(self, source: AudioSource, audio_sample: bytes) -> None:
+    def playback(self, source: AudioSource, format: int, audio_sample: bytes, sample_rate: int) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
-            sound_renderer.playback(source_id, audio_sample)
+            sound_renderer.playback(source_id, format, audio_sample, sample_rate)
 
     def stop_playback(self, source: AudioSource) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
