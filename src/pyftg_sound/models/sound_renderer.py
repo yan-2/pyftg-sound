@@ -4,7 +4,8 @@ from typing import List
 import numpy as np
 
 from pyftg_sound.openal import al, alc, soft
-from pyftg_sound.utils import dtypemap
+from pyftg_sound.utils.dtype import dtype_map
+from pyftg_sound.utils.openal import set_source_attribute
 
 
 class SoundRenderer:
@@ -35,10 +36,12 @@ class SoundRenderer:
     def set(self) -> None:
         alc.alcMakeContextCurrent(self.context)
 
-    def create_source(self) -> int:
+    def create_source(self, attrs: dict) -> int:
         self.set()
         source = al.ALuint(0)
         al.alGenSources(1, source)
+        for attr, value in attrs.items():
+            set_source_attribute(source, attr, value)
         return source.value
         
     def create_buffer(self) -> int:
@@ -51,24 +54,6 @@ class SoundRenderer:
         self.set()
         values_arr = (al.ALfloat * len(values))(*values)
         al.alListenerfv(param, values_arr)
-
-    def al_source_i(self, source_id: int, param: int, value: int) -> None:
-        self.set()
-        al.alSourcei(source_id, param, value)
-
-    def al_source_f(self, source_id: int, param: int, value: float) -> None:
-        self.set()
-        al.alSourcef(source_id, param, value)
-
-    def al_source_3i(self, source_id: int, param: int, values: List[int]) -> None:
-        self.set()
-        values_arr = (al.ALint * len(values))(*values)
-        al.alSource3i(source_id, param, values_arr[0], values_arr[1], values_arr[2])
-
-    def al_source_3f(self, source_id: int, param: int, values: List[float]) -> None:
-        self.set()
-        values_arr = (al.ALfloat * len(values))(*values)
-        al.alSource3f(source_id, param, values_arr[0], values_arr[1], values_arr[2])
 
     def play(self, source_id: int) -> None:
         self.set()
@@ -89,9 +74,9 @@ class SoundRenderer:
         self.set()
         if self.is_playing(source_id):
             self.stop(source_id)
-        self.al_source_i(source_id, al.AL_BUFFER, buffer_id)
-        self.al_source_3f(source_id, al.AL_POSITION, [x, y, z])
-        self.al_source_i(source_id, al.AL_LOOPING, al.AL_TRUE if loop else al.AL_FALSE)
+        set_source_attribute(source_id, al.AL_BUFFER, buffer_id)
+        set_source_attribute(source_id, al.AL_POSITION, [x, y, z])
+        set_source_attribute(source_id, al.AL_LOOPING, al.AL_TRUE if loop else al.AL_FALSE)
         self.play(source_id)
 
     def delete_source(self, source_id: int) -> None:
@@ -112,7 +97,7 @@ class SoundRenderer:
         audio_sample_type = dtype * render_size * nchannels
         audio_sample_ptr = ctypes.cast(audio_sample_type(), ctypes.c_void_p)
         soft.alcRenderSamplesSOFT(self.device, audio_sample_ptr, al.ALsizei(render_size))
-        separated_channel_audio = np.zeros((nchannels, render_size), dtype=dtypemap[dtype])
+        separated_channel_audio = np.zeros((nchannels, render_size), dtype=dtype_map[dtype])
         separated_channel_audio[:, :] = ctypes.cast(audio_sample_ptr, ctypes.POINTER(audio_sample_type)).contents
         return separated_channel_audio
     

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List
 
 from pyftg_sound.openal import al, alc
-from pyftg_sound.utils import load_sound
+from pyftg_sound.utils.wave import load_sound
 
 
 class AudioBuffer:

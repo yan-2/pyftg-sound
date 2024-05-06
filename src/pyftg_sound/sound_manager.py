@@ -7,6 +7,7 @@ from pyftg_sound.models.audio_buffer import AudioBuffer
 from pyftg_sound.models.audio_source import AudioSource
 from pyftg_sound.models.sound_renderer import SoundRenderer
 from pyftg_sound.openal import al
+from pyftg_sound.utils.openal import set_source_attribute
 
 
 class SoundManager:
@@ -41,12 +42,11 @@ class SoundManager:
         for sound_renderer in self.sound_renderers:
             sound_renderer.al_listener_fv(al.AL_ORIENTATION, listener_ori)
     
-    def create_audio_source(self, rolloff_factor: float = 0.01) -> AudioSource:
+    def create_audio_source(self, attrs: dict = {}) -> AudioSource:
         contexts = [sound_renderer.context for sound_renderer in self.sound_renderers]
         source_ids = [0] * len(self.sound_renderers)
         for i, sound_renderer in enumerate(self.sound_renderers):
-            source_ids[i] = sound_renderer.create_source()
-            sound_renderer.al_source_f(source_ids[i], al.AL_ROLLOFF_FACTOR, rolloff_factor)
+            source_ids[i] = sound_renderer.create_source(attrs)
         audio_source = AudioSource(contexts, source_ids)
         self.audio_sources.append(audio_source)
         return audio_source
@@ -90,12 +90,12 @@ class SoundManager:
     def set_source_pos3d(self, source: AudioSource, x: float, y: float, z: float) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
-            sound_renderer.al_source_3f(source_id, al.AL_POSITION, [x, y, z])
+            set_source_attribute(source_id, al.AL_POSITION, [x, y, z], context=sound_renderer.context)
 
     def set_source_gain(self, source: AudioSource, gain: float) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
             source_id = source.get_source_ids()[i]
-            sound_renderer.al_source_f(source_id, al.AL_GAIN, np.clip(gain, 0, 1))
+            set_source_attribute(source_id, al.AL_GAIN, gain, context=sound_renderer.context)
 
     def get_sound_buffer(self, sound_name: str) -> AudioBuffer:
         return self.sound_buffers.get(sound_name)

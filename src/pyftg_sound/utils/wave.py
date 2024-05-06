@@ -2,8 +2,6 @@ import wave
 from pathlib import Path
 from typing import Tuple
 
-import numpy as np
-
 from pyftg_sound.openal import al
 
 formatmap = {
@@ -11,17 +9,6 @@ formatmap = {
     (2, 8) : al.AL_FORMAT_STEREO8,
     (1, 16): al.AL_FORMAT_MONO16,
     (2, 16) : al.AL_FORMAT_STEREO16,
-}
-
-dtypemap = {
-    al.ALbyte: np.int8,
-    al.ALubyte: np.uint8,
-    al.ALshort: np.int16,
-    al.ALushort: np.uint16,
-    al.ALint: np.int32,
-    al.ALuint: np.uint32,
-    al.ALfloat: np.float32,
-    al.ALdouble: np.float64,
 }
 
 
