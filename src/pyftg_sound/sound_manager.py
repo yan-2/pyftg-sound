@@ -97,6 +97,11 @@ class SoundManager:
             source_id = source.get_source_ids()[i]
             set_source_attribute(source_id, al.AL_GAIN, gain, context=sound_renderer.context)
 
+    def set_source_pitch(self, source: AudioSource, pitch: float) -> None:
+        for i, sound_renderer in enumerate(self.sound_renderers):
+            source_id = source.get_source_ids()[i]
+            set_source_attribute(source_id, al.AL_PITCH, pitch, context=sound_renderer.context)
+
     def get_sound_buffer(self, sound_name: str) -> AudioBuffer:
         return self.sound_buffers.get(sound_name)
 
