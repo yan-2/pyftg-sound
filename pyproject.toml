@@ -1,8 +1,8 @@
 [project]
-name = "pyftg-sound"
+name = "fighting-sound"
 version = "0.2"
 authors = [
-  { name="TeamFightingICE" },
+  { name="yan" },
 ]
 description = "A sound library for DareFightingICE with OpenAL backend"
 readme = "README.md"
