@@ -16,11 +16,13 @@ class SoundManager:
     audio_buffers: List[AudioBuffer] = []
     sound_buffers: Dict[str, AudioBuffer] = {}
     virtual_renderer: SoundRenderer = None
+    default_renderer: SoundRenderer = None
 
     def __init__(self) -> None:
         pass
 
     def set_default_renderer(self, sound_renderer: SoundRenderer) -> None:
+        self.default_renderer = sound_renderer
         self.sound_renderers.append(sound_renderer)
 
     def set_virtual_renderer(self, virtual_renderer: SoundRenderer) -> None:
@@ -72,6 +74,13 @@ class SoundManager:
     
     def play(self, source: AudioSource, buffer: AudioBuffer, x: float, y: float, loop: bool) -> None:
         self.play3d(source, buffer, x, 0, y, loop)
+
+    def play_default_render(self, source: AudioSource, buffer: AudioBuffer, x: float, y: float, loop: bool) -> None:
+        if self.default_renderer:
+            source_id = source.get_source_ids()[1]
+            buffer_id = buffer.get_buffers()[1]
+            # fixme
+            self.default_renderer.play2(source_id, buffer_id, x, 0, y, loop)
 
     def play3d(self, source: AudioSource, buffer: AudioBuffer, x: float, y: float, z: float, loop: bool) -> None:
         for i, sound_renderer in enumerate(self.sound_renderers):
