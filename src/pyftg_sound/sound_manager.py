@@ -17,16 +17,20 @@ class SoundManager:
     sound_buffers: Dict[str, AudioBuffer] = {}
     virtual_renderer: SoundRenderer = None
     default_renderer: SoundRenderer = None
+    virtual_renderer_index:int
+    default_renderer_index:int
 
     def __init__(self) -> None:
         pass
 
     def set_default_renderer(self, sound_renderer: SoundRenderer) -> None:
         self.default_renderer = sound_renderer
+        self.default_renderer_index = len(self.sound_renderers)
         self.sound_renderers.append(sound_renderer)
 
     def set_virtual_renderer(self, virtual_renderer: SoundRenderer) -> None:
         self.virtual_renderer = virtual_renderer
+        self.virtual_renderer_index = len(self.sound_renderers)
         self.sound_renderers.append(virtual_renderer)
 
     def set_listener_position(self, x: float, y: float, z: float) -> None:
@@ -77,8 +81,9 @@ class SoundManager:
 
     def play_default_render(self, source: AudioSource, buffer: AudioBuffer, x: float, y: float, loop: bool) -> None:
         if self.default_renderer:
-            source_id = source.get_source_ids()[1]
-            buffer_id = buffer.get_buffers()[1]
+            i = self.default_renderer_index
+            source_id = source.get_source_ids()[i]
+            buffer_id = buffer.get_buffers()[i]
             # fixme
             self.default_renderer.play2(source_id, buffer_id, x, 0, y, loop)
 
