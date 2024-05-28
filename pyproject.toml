@@ -1,6 +1,6 @@
 [project]
 name = "fighting-sound"
-version = "0.2"
+version = "0.3"
 authors = [
   { name="yan" },
 ]
@@ -17,5 +17,5 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/TeamFightingICE/pyftg-sound"
-Issues = "https://github.com/TeamFightingICE/pyftg-sound/issues"
+Homepage = "https://github.com/yan-2/pyftg-sound"
+Issues = "https://github.com/yan-2/pyftg-sound/issues"
