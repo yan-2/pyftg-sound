@@ -1,6 +1,6 @@
 from typing import List
 
-from pyftg_sound.openal import al, alc
+from fighting_sound.openal import al, alc
 
 
 class AudioSource:

@@ -1,6 +1,6 @@
 import numpy as np
 
-from pyftg_sound.openal import al
+from fighting_sound.openal import al
 
 dtype_map = {
     al.ALbyte: np.int8,

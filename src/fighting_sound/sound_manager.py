@@ -3,11 +3,11 @@ from typing import Dict, List
 
 import numpy as np
 
-from pyftg_sound.models.audio_buffer import AudioBuffer
-from pyftg_sound.models.audio_source import AudioSource
-from pyftg_sound.models.sound_renderer import SoundRenderer
-from pyftg_sound.openal import al
-from pyftg_sound.utils.openal import set_source_attribute
+from fighting_sound.models.audio_buffer import AudioBuffer
+from fighting_sound.models.audio_source import AudioSource
+from fighting_sound.models.sound_renderer import SoundRenderer
+from fighting_sound.openal import al
+from fighting_sound.utils.openal import set_source_attribute
 
 
 class SoundManager:

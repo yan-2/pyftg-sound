@@ -3,9 +3,9 @@ from typing import List
 
 import numpy as np
 
-from pyftg_sound.openal import al, alc, soft
-from pyftg_sound.utils.dtype import dtype_map
-from pyftg_sound.utils.openal import set_source_attribute
+from fighting_sound.openal import al, alc, soft
+from fighting_sound.utils.dtype import dtype_map
+from fighting_sound.utils.openal import set_source_attribute
 
 
 class SoundRenderer:

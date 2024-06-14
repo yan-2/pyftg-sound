@@ -2,7 +2,7 @@ import wave
 from pathlib import Path
 from typing import Tuple
 
-from pyftg_sound.openal import al
+from fighting_sound.openal import al
 
 formatmap = {
     (1, 8) : al.AL_FORMAT_MONO8,
