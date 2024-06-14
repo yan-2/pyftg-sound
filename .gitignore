@@ -2,7 +2,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,windows,python,pycharm+all
 
 /src/*
-!/src/pyftg_sound
+!/src/fighting_sound
 
 ### macOS ###
 # General

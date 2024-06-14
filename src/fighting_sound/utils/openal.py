@@ -2,7 +2,6 @@ from typing import Any, List
 
 from pyftg_sound.openal import al, alc
 
-
 def set_source_list_attribute(source_id: int, attr: int, values: List):
     if all(isinstance(item, int) for item in values):
         func = al.alSource3i if len(values) == 3 else al.alSourceiv
